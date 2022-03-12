@@ -8,80 +8,51 @@ const Sequelize = require("sequelize");
 const Op = Sequelize.Op;
 
 router.get("/", async (req, res) => {
-  const q = req.query.q;
+  const q = req.query.q || "";
   const sort = req.query.sort;
 
-  // const urut = () => {
-  //   if (sort == "name_asc") {
-  //     res.send("OK");
-  //     // return {  };
-  //   }
-  // };
-
-  if (sort) {
-    if (sort == "lembu") {
-      res.send("ok");
-    } else {
-      res.send("okasdasdasd");
-    }
+  const [sortKey, sortOrder] = sort.split("_");
+  let order = null;
+  switch (sortKey) {
+    case "like":
+      order = [["nReactionLike", sortOrder]];
+      break;
+    case "newest":
+      order = [["updatedAt", "DESC"]];
+      break;
+    default:
+      order = [[sortKey, sortOrder]];
   }
 
-  if (!q) {
-    const dataResep = await Recipe.findAll({
-      order: [["id", `DESC`]],
-      include: [
-        {
-          model: RecipeIngredient,
-          as: "ingredientsPerServing",
-          attributes: ["item", "unit", "value"],
-        },
-        {
-          model: RecipeStep,
-          as: "steps",
-          attributes: ["stepOrder", "description"],
-        },
-      ],
-    });
+  const dataResep = await Recipe.findAll({
+    where: {
+      name: {
+        [Op.like]: `%${q}%`,
+      },
+    },
+    include: [
+      {
+        model: RecipeIngredient,
+        as: "ingredientsPerServing",
+        attributes: ["item", "unit", "value"],
+      },
+      {
+        model: RecipeStep,
+        as: "steps",
+        attributes: ["stepOrder", "description"],
+      },
+    ],
+    order,
+  });
 
-    return res.json({
-      success: true,
-      message: "Success",
-      data: {
-        total: dataResep.length,
-        data: dataResep,
-      },
-    });
-  }
-  if (q) {
-    const dataResep = await Recipe.findAll({
-      where: {
-        name: {
-          [Op.like]: `%${q}%`,
-        },
-      },
-      include: [
-        {
-          model: RecipeIngredient,
-          as: "ingredientsPerServing",
-          attributes: ["item", "unit", "value"],
-        },
-        {
-          model: RecipeStep,
-          as: "steps",
-          attributes: ["stepOrder", "description"],
-        },
-      ],
-    });
-
-    return res.json({
-      success: true,
-      message: "Success",
-      data: {
-        total: dataResep.length,
-        data: dataResep,
-      },
-    });
-  }
+  return res.json({
+    success: true,
+    message: "Success",
+    data: {
+      total: dataResep.length,
+      data: dataResep,
+    },
+  });
 });
 
 router.post("/", async (req, res, next) => {
